@@ -134,7 +134,12 @@ h2 b{font-weight:600}
 .deck-btns button:hover{background:var(--clay-l)}
 .deck-btns .yes{background:var(--clay);color:#fff}
 .deck-btns .yes:hover{background:var(--deep)}
-.deck-btns.done{display:none}
+.deck-btns .back{border-color:transparent;color:var(--soft);padding:12px 14px}
+.deck-btns .back:hover:not(:disabled){background:var(--mist)}
+.deck-btns button:disabled{opacity:.35;cursor:default}
+.deck-btns .again{display:none}
+.deck-btns.done .skip,.deck-btns.done .yes{display:none}
+.deck-btns.done .again{display:inline-block}
 .no-js .deck-btns{display:none}
 .mama{border-radius:28px;overflow:hidden;transform:rotate(2deg);box-shadow:var(--sh)}
 
@@ -228,6 +233,18 @@ details p{color:var(--soft);padding:0 40px 18px 0}
 .final .blob{background:var(--blue);opacity:.14}
 .safe{margin-top:30px;padding:16px 20px;border:1px solid rgba(255,255,255,.28);border-radius:16px;font-size:14.5px;color:#d6e0e5;max-width:640px}
 .concept{margin-top:20px;font-size:13px;color:#9fb1ba}
+
+/* окошко «Это учебный концепт» для кнопок без ссылок */
+.modal{position:fixed;inset:0;z-index:100;display:none;place-items:center;background:rgba(36,53,64,.55);padding:20px}
+.modal.open{display:grid}
+.modal .box{position:relative;background:var(--paper);border-radius:28px;padding:36px 32px 30px;max-width:440px;width:100%;box-shadow:var(--sh)}
+.modal h3{font:300 38px/1.1 var(--serif);margin-bottom:12px}
+.modal h3 .sc{font:400 1.05em/1 var(--hand);color:var(--clay)}
+.modal p{color:var(--soft);margin-bottom:22px}
+.modal .x{position:absolute;right:14px;top:12px;width:40px;height:40px;border:0;border-radius:50%;background:transparent;font:300 30px/1 var(--serif);color:var(--soft);cursor:pointer}
+.modal .x:hover{background:var(--mist)}
+.modal .ok{font:600 15px var(--sans);border:0;border-radius:999px;padding:13px 26px;background:var(--clay);color:#fff;cursor:pointer}
+.modal .ok:hover{background:var(--deep)}
 
 /* появление при прокрутке */
 .js .rv{opacity:0;transform:translateY(22px);transition:opacity .8s ease,transform .8s ease}
@@ -410,7 +427,7 @@ details p{color:var(--soft);padding:0 40px 18px 0}
         <article class="tcard">Вам непросто говорить об этом вслух.</article>
         <article class="tcard fin"><p>Вы не одна. Это не значит, что вы плохая мама.</p><a class="btn" href="#">Записаться в Телеграм <i>→</i></a></article>
       </div>
-      <div class="deck-btns rv" id="deckBtns"><button type="button" data-d="-1">Не про меня</button><button type="button" class="yes" data-d="1">Узнаю себя</button></div>
+      <div class="deck-btns rv" id="deckBtns"><button type="button" class="back" data-a="back" disabled>← Назад</button><button type="button" class="skip" data-d="-1">Не про меня</button><button type="button" class="yes" data-d="1">Узнаю себя</button><button type="button" class="again" data-a="again">Перечитать сначала</button></div>
     </div>
     <div class="mama rv"><img src="img/mama.jpg" width="900" height="1205" alt="Мама ночью рядом со спящим малышом, вид со спины" loading="lazy" decoding="async"></div>
   </div>
@@ -547,6 +564,15 @@ details p{color:var(--soft);padding:0 40px 18px 0}
   </section>
 </footer>
 
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mtitle">
+  <div class="box">
+    <button type="button" class="x" id="mclose" aria-label="Закрыть">×</button>
+    <h3 id="mtitle">Это <span class="sc">учебный концепт</span></h3>
+    <p id="mtext">Имя, цены и записи вымышлены. На настоящем сайте эта кнопка откроет Телеграм психолога.</p>
+    <button type="button" class="ok" id="mok">Понятно</button>
+  </div>
+</div>
+
 <div class="sticky"><a class="btn" href="#">Записаться в Телеграм <i>→</i></a></div>
 
 <script>
@@ -577,6 +603,7 @@ details p{color:var(--soft);padding:0 40px 18px 0}
         c.style.transform='translateY('+(k*12)+'px) scale('+(1-k*.045)+') rotate('+(k?(k%2?2.2:-2.2)*k:0)+'deg)';
         c.style.pointerEvents=k===0?'auto':'none'});
       btns.classList.toggle('done',!!cards[top]&&cards[top].classList.contains('fin'));
+      btns.querySelector('.back').disabled=(top===0);
     };
     var fly=function(dir){
       var c=cards[top];if(!c||c.classList.contains('fin'))return;
@@ -595,9 +622,28 @@ details p{color:var(--soft);padding:0 40px 18px 0}
       if(Math.abs(dx)>90)fly(dx>0?1:-1);else layout();
     };
     deck.addEventListener('pointerup',end);deck.addEventListener('pointercancel',end);
-    btns.addEventListener('click',function(e){var b=e.target.closest('button');if(b)fly(+b.dataset.d)});
+    btns.addEventListener('click',function(e){
+      var b=e.target.closest('button');if(!b||b.disabled)return;
+      if(b.dataset.a==='back'){top=Math.max(0,top-1);layout()}
+      else if(b.dataset.a==='again'){top=0;layout()}
+      else fly(+b.dataset.d);
+    });
     layout();
   }
+
+  /* кнопки без ссылок открывают окошко, а не прыгают вверх */
+  var modal=document.getElementById('modal'),mtext=document.getElementById('mtext'),mok=document.getElementById('mok'),last=null;
+  var closeModal=function(){modal.classList.remove('open');if(last)try{last.focus()}catch(_){}};
+  document.addEventListener('click',function(e){
+    var a=e.target.closest('a[href="#"]');
+    if(a){
+      e.preventDefault();last=a;
+      mtext.textContent=a.closest('.posts')?'Имя и тексты вымышлены. На настоящем сайте здесь откроется заметка.':'Имя, цены и записи вымышлены. На настоящем сайте эта кнопка откроет Телеграм психолога.';
+      modal.classList.add('open');mok.focus();return;
+    }
+    if(e.target===modal||e.target.closest('#mclose,#mok'))closeModal();
+  });
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&modal.classList.contains('open'))closeModal()});
 
   /* лёгкое движение портрета и имени за мышкой (только на компьютере) */
   var ok=window.matchMedia&&matchMedia('(hover:hover) and (pointer:fine)').matches&&!matchMedia('(prefers-reduced-motion:reduce)').matches;
